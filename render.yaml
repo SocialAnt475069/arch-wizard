@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: arch-customizer-wizard
+    runtime: node
+    buildCommand: npm install && npx tsc server.ts
+    startCommand: node server.js
+    disk:
+      name: config-storage
+      mountPath: /public/configs
+      sizeGB: 1
