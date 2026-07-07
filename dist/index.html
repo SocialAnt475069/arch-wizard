@@ -13,6 +13,7 @@
         <p class="text-slate-400 text-sm mb-6">Configure your custom automated archinstall profile.</p>
 
         <form id="wizardForm" class="space-y-6">
+            <!-- CPU Profile -->
             <div>
                 <label class="block text-sm font-semibold uppercase tracking-wider text-slate-300 mb-2">CPU Architecture</label>
                 <select id="cpu" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-200 focus:outline-none focus:border-sky-500">
@@ -21,6 +22,7 @@
                 </select>
             </div>
 
+            <!-- GPU / Drivers -->
             <div>
                 <label class="block text-sm font-semibold uppercase tracking-wider text-slate-300 mb-2">Graphics Card (GPU)</label>
                 <select id="gpu" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-200 focus:outline-none focus:border-sky-500">
@@ -30,6 +32,7 @@
                 </select>
             </div>
 
+            <!-- Desktop Environment -->
             <div>
                 <label class="block text-sm font-semibold uppercase tracking-wider text-slate-300 mb-2">Desktop Environment</label>
                 <select id="desktop" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-200 focus:outline-none focus:border-sky-500">
@@ -39,6 +42,7 @@
                 </select>
             </div>
 
+            <!-- Linux Kernel -->
             <div>
                 <label class="block text-sm font-semibold uppercase tracking-wider text-slate-300 mb-2">Linux Kernel</label>
                 <select id="kernel" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-200 focus:outline-none focus:border-sky-500">
@@ -47,46 +51,54 @@
                 </select>
             </div>
 
-            <button type="button" onclick="generateConfig()" class="w-full bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg">
-                Generate Configuration File
+            <!-- Submit -->
+            <button type="button" onclick="generateAndDownloadConfig()" class="w-full bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg">
+                Generate & Download Configuration
             </button>
         </form>
 
+        <!-- Output URL Block -->
         <div id="resultBlock" class="mt-8 pt-6 border-t border-slate-700 hidden">
-            <p class="text-emerald-400 font-semibold mb-2">✓ Configuration Generated Successfully!</p>
-            <p class="text-xs text-slate-400 mb-3">Copy this URL to use directly inside your target machine's archinstall command:</p>
-            <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 break-all select-all font-mono text-sm text-sky-400" id="configUrl">
-                Generating...
-            </div>
+            <p class="text-emerald-400 font-semibold mb-2">✓ Configuration Generated!</p>
+            <p class="text-xs text-slate-400 mb-3">Your custom user_configuration.json profile has been downloaded to your computer.</p>
         </div>
     </div>
 
     <script>
-        async function generateConfig() {
-            const payload = {
-                cpu: document.getElementById('cpu').value,
-                gpu: document.getElementById('gpu').value,
-                desktop: document.getElementById('desktop').value,
-                kernel: document.getElementById('kernel').value
+        function generateAndDownloadConfig() {
+            // Build the clean JSON payload that archinstall expects
+            const configData = {
+                "additional_packages": [
+                    document.getElementById('kernel').value,
+                    document.getElementById('kernel').value + "-headers",
+                    document.getElementById('gpu').value === 'nvidia-pascal' ? 'nvidia-390xx-dkms' : 
+                    document.getElementById('gpu').value === 'nvidia-modern' ? 'nvidia-dkms' : 'xf86-video-amdgpu'
+                ],
+                "desktop-environment": document.getElementById('desktop').value,
+                "gfx_driver": document.getElementById('gpu').value.includes('nvidia') ? 'Nvidia' : 'AMD',
+                "profile": "desktop",
+                "audio": "pipewire",
+                "bootloader": "systemd-boot"
             };
 
-            try {
-                const response = await fetch('/api/config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    document.getElementById('configUrl').innerText = window.location.origin + data.path;
-                    document.getElementById('resultBlock').classList.remove('hidden');
-                } else {
-                    alert('Error creating setup config.');
-                }
-            } catch (err) {
-                alert('Could not connect to the backend server.');
-            }
+            // Turn it into raw string text
+            const jsonString = JSON.stringify(configData, null, 4);
+            
+            // Create a downloadable file link right in your browser memory
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'user_configuration.json';
+            
+            // Trigger the immediate file download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Show success notification on screen
+            document.getElementById('resultBlock').classList.remove('hidden');
         }
     </script>
 </body>
